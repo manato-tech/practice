@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\PostController;
 
+// routes/web.php に追加
+Route::post('/image/analyze', [App\Http\Controllers\ImageAnalysisController::class, 'analyze'])->name('image.analyze');
+Route::post('/image/save-analysis', [App\Http\Controllers\ImageAnalysisController::class, 'saveAnalysis'])->name('image.save-analysis');
+Route::post('/image/save-analysis', [App\Http\Controllers\ImageAnalysisController::class, 'saveAnalysis'])->name('image.save-analysis');
 Route::delete('post/{post}',[PostController::class,'destroy'])->name('post.destroy');
 Route::get('post/{post}/edit',[PostController::class,'edit'])->name('post.edit');
 Route::patch('post/{post}',[PostController::class,'update'])->name('post.update');
