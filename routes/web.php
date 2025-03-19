@@ -1,40 +1,45 @@
 <?php
 
 use App\Http\Controllers\ProfileController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\PostController;
+use App\Http\Controllers\ImageAnalysisController;
+use Illuminate\Support\Facades\Route;
 
-// routes/web.php に追加
-Route::post('/image/analyze', [App\Http\Controllers\ImageAnalysisController::class, 'analyze'])->name('image.analyze');
-Route::post('/image/save-analysis', [App\Http\Controllers\ImageAnalysisController::class, 'saveAnalysis'])->name('image.save-analysis');
-Route::post('/image/save-analysis', [App\Http\Controllers\ImageAnalysisController::class, 'saveAnalysis'])->name('image.save-analysis');
-Route::delete('post/{post}',[PostController::class,'destroy'])->name('post.destroy');
-Route::get('post/{post}/edit',[PostController::class,'edit'])->name('post.edit');
-Route::patch('post/{post}',[PostController::class,'update'])->name('post.update');
-Route::get('post/show/{post}',[PostController::class,'show'])->name('post.show');
+// 🔹 投稿関連ルート (posts)
+//Route::middleware(['auth'])->group(function () {
+ //   Route::resource('post', PostController::class);
+  //  Route::get('/post/search', [PostController::class, 'search'])->name('post.search');
 
-Route::post('post',[PostController::class,'store'])->name('post.store');
-Route::get('post',[PostController::class,'index'])->name('post.index');
+//});
 
-Route::get('post/create',[PostController::class,'create'])->name('post.create');
-//>middleware(['auth','admin']);
+Route::get('/post/search', [PostController::class, 'search'])->name('post.search');
 
-Route::get('/test',[TestController::class,'test'])->name('test');
-
-Route::get('/', function () {
-    return view('welcome');
-}); //追加site // 認証済みユーザーのみがアクセス可能
+Route::middleware(['auth'])->group(function () {
+    Route::resource('post', PostController::class);
+});
 
 
-Route::get('/dashboard', function () {
-   return view('dashboard');
-})->middleware(['auth', 'verified'])->name('dashboard');
+// 🔹 画像分析関連
+Route::post('/image/analyze', [ImageAnalysisController::class, 'analyze'])->name('image.analyze');
+Route::post('/image/save-analysis', [ImageAnalysisController::class, 'saveAnalysis'])->name('image.save-analysis');
 
-Route::middleware('auth')->group(function () {
+// 🔹 認証関連
+Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
+
+// 🔹 その他
+Route::get('/test', [TestController::class, 'test'])->name('test');
+Route::get('/', function () {
+    return view('welcome');
+});
+
+// 🔹 ダッシュボード (認証済みのみ)
+Route::get('/dashboard', function () {
+   return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 require __DIR__.'/auth.php';

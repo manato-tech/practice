@@ -42,6 +42,7 @@ class PostController extends Controller
     public function show(Post $post){
         return view('post.show',compact('post'));
     }
+    
 
     public function edit(Post $post){
         return view('post.edit',compact('post'));
@@ -83,5 +84,21 @@ class PostController extends Controller
         $request->session()->flash('message','削除しました');
         return redirect()->route('post.index');
     }
-    
+
+    public function search(Request $request)
+{
+    $query = $request->input('query');
+
+    $posts = Post::where('title', 'like', "%{$query}%")
+                 ->orWhere('body', 'like', "%{$query}%")
+                 ->latest()
+                 ->get();
+
+    return view('post.search', compact('posts'));
 }
+
+
+    }
+
+    
+

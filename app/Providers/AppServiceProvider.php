@@ -27,6 +27,9 @@ class AppServiceProvider extends ServiceProvider
             if($user->id=== 1){
                 return true;
             }
+            else if($user->id=== 2){
+                return true;
+            }
             return false;
         });
     }
