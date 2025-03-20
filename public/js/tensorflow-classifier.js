@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const form = document.getElementById('imageAnalysisForm');
     const resultDiv = document.getElementById('analysisResult');
     const resultContent = document.getElementById('resultContent');
+    const postImage = document.getElementById('dis'); // 投稿に添付されている画像への参照
     
     // Model loading status
     let modelLoaded = false;
@@ -66,126 +67,116 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // Handle form submit
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
-        
-        const imageInput = document.getElementById('ai_image');
-        if (!imageInput.files || imageInput.files.length === 0) {
-            resultContent.innerHTML = '<div class="text-red-600">画像を選択してください。</div>';
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            // フォームのデータを取得
+            const formData = new FormData(form);
+            
+            // Show loading state
             resultDiv.classList.remove('hidden');
-            return;
-        }
-        
-        const file = imageInput.files[0];
-        const formData = new FormData(form);
-        formData.append('post_id', formData.get('post_id'));
-        
-        // Show loading state
-        resultContent.innerHTML = '<div>分析中...</div>';
-        resultDiv.classList.remove('hidden');
-        
-        // First, display the image
-        const img = document.createElement('img');
-        img.src = URL.createObjectURL(file);
-        img.style.maxWidth = '300px';
-        img.style.maxHeight = '300px';
-        img.style.marginBottom = '10px';
-        
-        // When image is loaded, classify it
-        img.onload = async function() {
-            // Perform the existing image analysis
-            try {
-                const response = await fetch(form.getAttribute('data-analyze-url') || '{{ route("image.analyze") }}', {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-                    }
-                });
-                
-                const data = await response.json();
-                
-                // Now perform TensorFlow.js classification
-                const tfResult = await classifyImage(img);
-                
-                // Combine the results
-                let htmlContent = '';
-                
-                if (data.success) {
-                    // Display standard image analysis results
-                    let colorDisplay = '';
-                    if (data.result.avg_color && data.result.avg_color.hex) {
-                        colorDisplay = `
-                            <div class="flex items-center mt-2">
-                                <div style="background-color: ${data.result.avg_color.hex}; width: 50px; height: 50px; border: 1px solid #ccc;"></div>
-                                <div class="ml-2">
-                                    <div>色コード: ${data.result.avg_color.hex}</div>
-                                    <div>RGB値: R=${data.result.avg_color.r}, G=${data.result.avg_color.g}, B=${data.result.avg_color.b}</div>
+            resultContent.innerHTML = '<div class="text-center py-4">分析中...<div class="mt-2 spinner"></div></div>';
+            
+            // 投稿に添付された画像を使用する
+            if (postImage) {
+                try {
+                    // サーバーサイドの分析APIを呼び出す
+                    const response = await fetch(form.getAttribute('data-analyze-url'), {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    // Now perform TensorFlow.js classification on the post image
+                    const tfResult = await classifyImage(postImage);
+                    
+                    // Combine the results
+                    let htmlContent = '';
+                    
+                    if (data.success) {
+                        // Display standard image analysis results
+                        let colorDisplay = '';
+                        if (data.result.avg_color && data.result.avg_color.hex) {
+                            colorDisplay = `
+                                <div class="flex items-center mt-2">
+                                    <div style="background-color: ${data.result.avg_color.hex}; width: 50px; height: 50px; border: 1px solid #ccc;"></div>
+                                    <div class="ml-2">
+                                        <div>色コード: ${data.result.avg_color.hex}</div>
+                                        <div>RGB値: R=${data.result.avg_color.r}, G=${data.result.avg_color.g}, B=${data.result.avg_color.b}</div>
+                                    </div>
                                 </div>
+                            `;
+                        }
+                        
+                        htmlContent += `
+                            <div class="text-green-600">分析完了！</div>
+                            <div class="mt-3">
+                                <div><strong>画像サイズ:</strong> ${data.result.width} × ${data.result.height} ピクセル</div>
+                                <div><strong>優勢な色調:</strong> ${data.result.dominant_tone}</div>
+                                ${data.result.brightness ? `<div><strong>明るさ:</strong> ${data.result.brightness.value} (${data.result.brightness.category})</div>` : ''}
+                            </div>
+                            <div class="mt-3">
+                                <strong>平均色:</strong>
+                                ${colorDisplay}
                             </div>
                         `;
                     }
                     
-                    htmlContent += `
-                        <div class="text-green-600">分析完了！</div>
-                        <div class="mt-3">
-                            <div><strong>画像サイズ:</strong> ${data.result.width} × ${data.result.height} ピクセル</div>
-                            <div><strong>優勢な色調:</strong> ${data.result.dominant_tone}</div>
-                            ${data.result.brightness ? `<div><strong>明るさ:</strong> ${data.result.brightness.value} (${data.result.brightness.category})</div>` : ''}
-                        </div>
-                        <div class="mt-3">
-                            <strong>平均色:</strong>
-                            ${colorDisplay}
-                        </div>
-                    `;
-                }
-                
-                // Add TensorFlow.js classification results
-                if (tfResult.success) {
-                    htmlContent += `
-                        <div class="mt-4">
-                            <strong>AI画像分類結果:</strong>
-                            <ul class="mt-2 list-disc pl-5">
-                                ${tfResult.predictions.map(pred => 
-                                    `<li>${pred.className}: ${(pred.probability * 100).toFixed(2)}%</li>`
-                                ).join('')}
-                            </ul>
-                        </div>
-                    `;
-                } else if (tfResult.error) {
-                    htmlContent += `<div class="mt-4 text-red-600">AI分類エラー: ${tfResult.error}</div>`;
-                }
-                
-                // Display the image and results
-                resultContent.innerHTML = `
-                    <div class="mb-4">
-                        <strong>分析した画像:</strong><br>
-                        ${img.outerHTML}
-                    </div>
-                    ${htmlContent}
-                `;
-                
-                // Save the analysis results if needed
-                if (data.success && tfResult.success) {
-                    const combinedResult = {
-                        standardAnalysis: data.result,
-                        aiClassification: tfResult.predictions
-                    };
+                    // Add TensorFlow.js classification results
+                    if (tfResult.success) {
+                        htmlContent += `
+                            <div class="mt-4">
+                                <strong>AI画像分類結果:</strong>
+                                <ul class="mt-2 list-disc pl-5">
+                                    ${tfResult.predictions.map(pred => 
+                                        `<li>${pred.className}: ${(pred.probability * 100).toFixed(2)}%</li>`
+                                    ).join('')}
+                                </ul>
+                            </div>
+                        `;
+                    } else if (tfResult.error) {
+                        htmlContent += `<div class="mt-4 text-red-600">AI分類エラー: ${tfResult.error}</div>`;
+                    }
                     
-                    saveAnalysisResults(combinedResult);
+                    // Display the image and results
+                    resultContent.innerHTML = `
+                        <div class="mb-4">
+                            <strong>分析した画像:</strong><br>
+                            <img src="${postImage.src}" style="max-width: 300px; max-height: 300px; margin-bottom: 10px;">
+                        </div>
+                        ${htmlContent}
+                    `;
+                    
+                    // Save the analysis results if needed
+                    if (data.success && tfResult.success) {
+                        const combinedResult = {
+                            standardAnalysis: data.result,
+                            aiClassification: tfResult.predictions
+                        };
+                        
+                        saveAnalysisResults(combinedResult);
+                    }
+                    
+                } catch (error) {
+                    resultContent.innerHTML = `
+                        <div class="mb-4">
+                            <strong>分析した画像:</strong><br>
+                            <img src="${postImage.src}" style="max-width: 300px; max-height: 300px; margin-bottom: 10px;">
+                        </div>
+                        <div class="text-red-600">エラー: ${error.message}</div>
+                    `;
                 }
-                
-            } catch (error) {
-                resultContent.innerHTML = `
-                    <div class="mb-4">
-                        <strong>分析した画像:</strong><br>
-                        ${img.outerHTML}
-                    </div>
-                    <div class="text-red-600">エラー: ${error.message}</div>
-                `;
+            } else {
+                resultContent.innerHTML = '<div class="text-red-600">分析する画像が見つかりませんでした。</div>';
             }
-        };
-    });
+        });
+    }
     
     // Save analysis results to the server
     function saveAnalysisResults(combinedResult) {
@@ -212,15 +203,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// This is a simplified version of ImageNet classes
-// In a real app, you'd want to include all 1000 classes
-//const IMAGENET_CLASSES = [
-    //'テレビ', '冷蔵庫', '本', 'タオル', '車', 'バス', '人', '犬', '猫', '鳥',
-    //'花', '木', '海', '山', '川', '空', '雲', '食べ物', '果物', '野菜',
-    //'コンピューター', 'カメラ', '時計', '電話', '椅子', 'テーブル', 'ベッド', 'ソファ', 'キッチン用品', '建物',
-  //  '信号機', '道路', '橋', '船', '飛行機', '電車', '自転車', 'バイク', 'スポーツ用品', '楽器'
-    // Normally you'd include all 1000 ImageNet classes here
-//];
 const IMAGENET_CLASSES= [
      'tench, Tinca tinca',
      'goldfish, Carassius auratus',
