@@ -1,10 +1,20 @@
 <?php
 
+use App\Http\Controllers\LolController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TestController;
 use App\Http\Controllers\PostController;
 use App\Http\Controllers\ImageAnalysisController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ScraperController;
+
+Route::get('/scrape-data', [App\Http\Controllers\ScraperController::class, 'getScrapedData'])->name('scrape.data');
+
+Route::get('/scrape', [ScraperController::class, 'getScrapedData'])->name('scrape.data');
+
+
+
+
 
 // 🔹 投稿関連ルート (posts)
 //Route::middleware(['auth'])->group(function () {
@@ -12,8 +22,10 @@ use Illuminate\Support\Facades\Route;
   //  Route::get('/post/search', [PostController::class, 'search'])->name('post.search');
 
 //});
+Route::get('/post/lol', [LolController::class, 'lol'])->name('lol.lol');
 
 Route::get('/post/search', [PostController::class, 'search'])->name('post.search');
+
 
 Route::middleware(['auth'])->group(function () {
     Route::resource('post', PostController::class);

@@ -12,13 +12,13 @@
 
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                <x-nav-link :href="route('post.index')" :active="request()->routeIs('post.index')">
-    投稿一覧
-</x-nav-link>
-
-<x-nav-link :href="route('post.create')" :active="request()->routeIs('post.create')">
-    新規作成
-</x-nav-link>
+                    <x-nav-link :href="route('post.index')" :active="request()->routeIs('post.index')">
+                        投稿一覧
+                    </x-nav-link>
+                    
+                    <x-nav-link :href="route('post.create')" :active="request()->routeIs('post.create')">
+                        新規作成
+                    </x-nav-link>
 
 
 
